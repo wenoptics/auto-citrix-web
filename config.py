@@ -1,10 +1,5 @@
+import configparser
 
-from dynaconf import Dynaconf
+settings = configparser.ConfigParser()
+settings.read('.secrets.ini')
 
-settings = Dynaconf(
-    envvar_prefix="DYNACONF",
-    settings_files=['settings.ini', '.secrets.ini'],
-)
-
-# `envvar_prefix` = export envvars with `export DYNACONF_FOO=bar`.
-# `settings_files` = Load these files in the order.

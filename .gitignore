@@ -1,4 +1,4 @@
 venv/
 
 # Ignore dynaconf secret files
-.secrets.*
+.secrets.ini

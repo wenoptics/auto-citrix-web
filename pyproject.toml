@@ -7,7 +7,7 @@ authors = ["wenoptk"]
 [tool.poetry.dependencies]
 python = "^3.10"
 playwright = "^1.18.1"
-dynaconf = "^3.1.7"
+rich = "^11.0.0"
 
 [tool.poetry.dev-dependencies]
 
