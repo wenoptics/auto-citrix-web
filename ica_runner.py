@@ -31,17 +31,16 @@ async def _check_rdm(ctx: Context, timeout=120) -> Tuple[bool, str]:
     with ctx.console.status("[bold orange]Looking for matching rules...", spinner='dots'):
         _start = time.time()
         while time.time() - _start < timeout:
-            windows = Desktop(backend="uia").windows(title='Citrix Workspace App')
-            for w in windows:
-                try:
-                    logger.debug(f'Found title="{w.window_text()}" (className="{w.class_name()}")')
-                    if 'did not launch successfully ' in str(w.dump_tree()):
-                        return False, 'Failed due to error dialog'
+            w = Desktop(backend="uia").window(title='Citrix Workspace App')
+            try:
+                logger.debug(f'Found title="{w.window_text()}" (className="{w.class_name()}")')
+                if 'did not launch successfully' in ''.join(w.static.texts()):
                     # Try to close the dialog
-                    w.Close.click()
-                except pywinauto.findwindows.ElementNotFoundError:
-                    # Not found the error dialog
-                    pass
+                    w.CloseButton.click()
+                    return False, 'Failed due to detecting the error dialog'
+            except pywinauto.findwindows.ElementNotFoundError:
+                # Not found the error dialog
+                pass
 
             w = Desktop(backend="uia").window(
                 title_re=r'^Remote Desktop Manager.*',
