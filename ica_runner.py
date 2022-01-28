@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import shutil
 import subprocess
@@ -7,9 +8,10 @@ from pathlib import Path
 from typing import Union, Tuple
 
 import pywinauto
-from rich.pretty import pprint
+import rich.console
 from pywinauto import Desktop
 
+from context import Context
 
 logger = logging.getLogger(__name__)
 BIN_RUNNER = r"C:\Program Files (x86)\Citrix\ICA Client\wfcrun32.exe"
@@ -25,35 +27,48 @@ def run_ica(ica_file: Union[Path, str], runner=BIN_RUNNER):
         ret = subprocess.call([str(runner), str(tmp_ica)])
 
 
-def check(key: str, timeout=6000) -> Tuple[bool, str]:
-    # windows = Desktop(backend="uia").windows()
-    # pprint([w.window_text() for w in windows])
-
-    if key == 'Remote Desktop Manager':
+async def _check_rdm(ctx: Context, timeout=120) -> Tuple[bool, str]:
+    with ctx.console.status("[bold orange]Looking for matching rules...", spinner='dots'):
         _start = time.time()
         while time.time() - _start < timeout:
-            window = Desktop(backend="uia").window(title='Remote Desktop Manager')
-            try:
-                logger.debug(f'Found title="{window.window_text()}" (className={window.class_name()})')
-                return False, 'Failed due to error dialog'
-            except pywinauto.findwindows.ElementNotFoundError:
-                # Not found the error dialog
-                pass
+            windows = Desktop(backend="uia").windows(title='Citrix Workspace App')
+            for w in windows:
+                try:
+                    logger.debug(f'Found title="{w.window_text()}" (className="{w.class_name()}")')
+                    if 'did not launch successfully ' in str(w.dump_tree()):
+                        return False, 'Failed due to error dialog'
+                    # Try to close the dialog
+                    w.Close.click()
+                except pywinauto.findwindows.ElementNotFoundError:
+                    # Not found the error dialog
+                    pass
 
-            window = Desktop(backend="uia").window(
+            w = Desktop(backend="uia").window(
                 title_re=r'^Remote Desktop Manager.*',
                 class_name='Transparent Windows Client')
             try:
-                logger.debug(f'Found title="{window.window_text()}" (className={window.class_name()})')
+                logger.debug(f'Found title="{w.window_text()}" (className="{w.class_name()}")')
                 return True, 'OK'
             except pywinauto.findwindows.ElementNotFoundError:
                 # Not found the opened app
                 pass
-        return False, 'Failed due to time out'
-    else:
-        logger.warning(f'No checking rules for "{key}". Assuming successful.')
-        return True, 'No checking rules'
+            await asyncio.sleep(1)
+    return False, 'Failed due to time out'
 
+
+async def check(ctx: Context, key: str, timeout=120) -> Tuple[bool, str]:
+    # windows = Desktop(backend="uia").windows()
+    # pprint([w.window_text() for w in windows])
+
+    try:
+        if key == 'Remote Desktop Manager':
+            return await _check_rdm(ctx, timeout)
+        else:
+            logger.warning(f'No checking rules for "{key}". Assuming successful.')
+            return True, 'No checking rules'
+    except Exception as e:
+        ctx.console.print_exception(show_locals=True)
+        return False, str(e)
 
 if __name__ == '__main__':
     from rich.logging import RichHandler
@@ -63,5 +78,6 @@ if __name__ == '__main__':
         handlers=[RichHandler(rich_tracebacks=True)]
     )
 
-    check_app()
-
+    asyncio.run(
+        check(Context(rich.console.Console()), 'Remote Desktop Manager')
+    )

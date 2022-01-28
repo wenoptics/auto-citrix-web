@@ -3,18 +3,16 @@ import shutil
 from pathlib import Path
 import logging
 
+import click
 import rich.spinner
 from playwright.async_api import Page
 from rich.logging import RichHandler
 
+
 import config
-
-import click
-
-import ica_runner
 from citrix_web import citrix_login, load_apps
 from context import Context
-from ica_runner import run_ica
+import ica_runner
 from utils import coro
 
 console = rich.console.Console()
@@ -37,10 +35,15 @@ def cli(click_ctx):
 
 
 @cli.command()
-@click.option('--app-name', type=str, default='Remote Desktop Manager')
+@click.option('--app-name', type=str, default='Remote Desktop Manager',
+              help='The app name to start')
+@click.option('--retry', type=int, default=10,
+              help='Retry times. 0 to disable retry')
+@click.option('--retry-delay', type=int, default=30,
+              help='Retry delay in seconds')
 @click.pass_context
 @coro
-async def start(click_ctx, app_name) -> None:
+async def start(click_ctx, app_name, retry: int, retry_delay: int) -> None:
     app_ctx = click_ctx.obj['app_ctx']
     username = config.get_config('username')
     password = config.get_config('password')
@@ -52,7 +55,10 @@ async def start(click_ctx, app_name) -> None:
         if app_name not in app_map:
             raise ValueError(f'Not found app named "{app_name}"')
 
-        for _ in range(10):
+        for i in range(retry):
+
+            console.log('-'*20)
+            console.log(f'[{i+1}/{retry}] try...')
 
             with console.status(f'[bold blue]Downloading app "{app_name}"...', spinner='line') as status:
                 async with page_app.expect_download() as download_info:
@@ -69,14 +75,15 @@ async def start(click_ctx, app_name) -> None:
             _ica = dst / 'start.ica'
             shutil.copy(path, _ica)
             ica_runner.run_ica(_ica)
-            is_successful, reason = ica_runner.check(app_name)
+            is_successful, reason = await ica_runner.check(app_ctx, app_name)
 
             if is_successful:
+                console.log(f'App "{app_name}" launched successfully ({reason})')
                 break
 
             console.log(f'Launch failed: {reason}')
-            console.log(f'Sleep for some time and retry "{app_name}"...')
-            await asyncio.sleep(20)
+            console.log(f'Sleep for {retry_delay} seconds and retry "{app_name}"...')
+            await asyncio.sleep(retry_delay)
 
 
 @cli.command()
