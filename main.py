@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 
 
 @click.group()
+@click.option('--debug', help='Use debug mode. The browser will be visible', is_flag=True)
 # @click.option('-c', '--config-path', help='config ini file path', default='.secrets.ini')
 @click.pass_context
-def cli(click_ctx):
+def cli(click_ctx, debug: bool = False):
     logging.basicConfig(
         level=logging.NOTSET,
         format='[%(name)s] %(message)s',
@@ -30,7 +31,8 @@ def cli(click_ctx):
     )
 
     click_ctx.obj = {
-        'app_ctx': Context(console)
+        'app_ctx': Context(console),
+        'is_debug': debug
     }
 
 
@@ -45,9 +47,10 @@ def cli(click_ctx):
 @coro
 async def start(click_ctx, app_name, retry: int, retry_delay: int) -> None:
     app_ctx = click_ctx.obj['app_ctx']
+    in_headless = not click_ctx.obj['is_debug']
     username = config.get_config('username')
     password = config.get_config('password')
-    async with citrix_login(app_ctx, username, password) as page_app:
+    async with citrix_login(app_ctx, username, password, headless=in_headless) as page_app:
         page_app: Page
 
         app_map = await load_apps(app_ctx, page_app)
@@ -91,9 +94,10 @@ async def start(click_ctx, app_name, retry: int, retry_delay: int) -> None:
 @coro
 async def list_apps(click_ctx):
     app_ctx = click_ctx.obj['app_ctx']
+    in_headless = not click_ctx.obj['is_debug']
     username = config.get_config('username')
     password = config.get_config('password')
-    async with citrix_login(app_ctx, username, password) as page_app:
+    async with citrix_login(app_ctx, username, password, headless=in_headless) as page_app:
         app_map = await load_apps(app_ctx, page_app)
         return list(app_map.keys())
 

@@ -1,14 +1,34 @@
 import contextlib
+import logging
 
 from playwright.async_api import Page, async_playwright
 
 from context import Context
 
+logger = logging.getLogger(__name__)
+
+
+def _javascript_create_notice(txt: str):
+    return f"""
+      const el = document.createElement("div");
+      el.appendChild(document.createTextNode("{txt}"));
+      el.style.padding = '2em';
+      el.style.fontSize = '2em';
+      el.style.margin = '1em';
+      el.style.border = '1px white solid';
+      el.style.color = 'white';
+      el.style.backgroundColor = 'rgba(100,100,100,0.8)';
+      el.style.textAlign = 'center';
+
+      document.querySelector('#logonbelt-bottomshadow')
+        .appendChild(el);
+    """
+
 
 @contextlib.asynccontextmanager
-async def citrix_login(ctx: Context, username: str, password: str):
+async def citrix_login(ctx: Context, username: str, password: str, headless=False):
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=False)
+        browser = await playwright.chromium.launch(headless=headless)
         context = await browser.new_context()
 
         # Open new page
@@ -16,32 +36,22 @@ async def citrix_login(ctx: Context, username: str, password: str):
 
         # Go to https://ctxstore.ansys.com/vpn/index.html
         await page.goto("https://ctxstore.ansys.com/vpn/index.html")
+        logger.debug('Page loaded.')
 
         await page.fill('input[id="Enter user name"]', username)
         await page.fill('input[id="passwd"]', password)
         await page.check('input[id="eula_check"]')
+        logger.debug('Applied user inputs.')
 
         # Login and wait for login success
         with ctx.console.status("[bold blue]Waiting for login success...", spinner='dots') as status:
             # Create a notice
-            await page.evaluate("""
-              const el = document.createElement("div");
-              el.appendChild(document.createTextNode("Waiting for login response..."));
-              el.style.padding = '2em';
-              el.style.fontSize = '2em';
-              el.style.margin = '1em';
-              el.style.border = '1px white solid';
-              el.style.color = 'white';
-              el.style.backgroundColor = 'rgba(100,100,100,0.8)';
-              el.style.textAlign = 'center';
-    
-              document.querySelector('#logonbelt-bottomshadow')
-                .appendChild(el);
-            """)
+            await page.evaluate(_javascript_create_notice('Waiting for login response...'))
 
-            ctx.console.log('\n\nYou may need to respond to the login SSO request...\n\n')
             await page.click('input[id="Log_On"]')
+            logger.debug('Log on button clicked.')
             ctx.console.log('Waiting for login response...')
+            ctx.console.log('\n\nYou may need to respond to the login SSO request...\n\n')
 
             # Click text=Skip Check
             await page.click("text=Skip Check")
