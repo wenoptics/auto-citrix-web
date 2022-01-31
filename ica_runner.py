@@ -28,6 +28,7 @@ def run_ica(ica_file: Union[Path, str], runner=BIN_RUNNER):
 
 
 async def _check_rdm(ctx: Context, timeout=120) -> Tuple[bool, str]:
+
     with ctx.console.status("[bold orange]Looking for matching rules...", spinner='dots'):
         _start = time.time()
         while time.time() - _start < timeout:
@@ -52,6 +53,7 @@ async def _check_rdm(ctx: Context, timeout=120) -> Tuple[bool, str]:
                 # Not found the opened app
                 pass
             await asyncio.sleep(1)
+
     return False, 'Failed due to time out'
 
 
@@ -59,6 +61,7 @@ async def check(ctx: Context, key: str, timeout=120) -> Tuple[bool, str]:
     # windows = Desktop(backend="uia").windows()
     # pprint([w.window_text() for w in windows])
 
+    logger.info(f'Checking launch rules for {key} (timeout={timeout}s)')
     try:
         if key == 'Remote Desktop Manager':
             return await _check_rdm(ctx, timeout)

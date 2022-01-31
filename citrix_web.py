@@ -48,10 +48,10 @@ async def citrix_login(ctx: Context, username: str, password: str, headless=Fals
             # Create a notice
             await page.evaluate(_javascript_create_notice('Waiting for login response...'))
 
-            await page.click('input[id="Log_On"]')
-            logger.debug('Log on button clicked.')
             ctx.console.log('Waiting for login response...')
             ctx.console.log('\n\nYou may need to respond to the login SSO request...\n\n')
+            await page.click('input[id="Log_On"]')
+            logger.debug('Log on button clicked.')
 
             # Click text=Skip Check
             await page.click("text=Skip Check")
