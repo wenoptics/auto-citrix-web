@@ -48,9 +48,10 @@ def cli(click_ctx, debug: bool = False):
 async def start(click_ctx, app_name, retry: int, retry_delay: int) -> None:
     app_ctx = click_ctx.obj['app_ctx']
     in_headless = not click_ctx.obj['is_debug']
-    username = config.get_config('username')
-    password = config.get_config('password')
-    async with citrix_login(app_ctx, username, password, headless=in_headless) as page_app:
+    username = config.get_config('USERNAME')
+    password = config.get_config('PASSWORD')
+    url = config.get_config('CITRIX_URL')
+    async with citrix_login(app_ctx, url, username, password, headless=in_headless) as page_app:
         page_app: Page
 
         app_map = await load_apps(app_ctx, page_app)
@@ -77,7 +78,7 @@ async def start(click_ctx, app_name, retry: int, retry_delay: int) -> None:
             dst = Path(r'C:\Users\wenop\OneDrive\Desktop')
             _ica = dst / 'start.ica'
             shutil.copy(path, _ica)
-            ica_runner.run_ica(_ica)
+            ica_runner.run_ica(_ica, config.get_config('ICA_RUNNER', sec='config'))
             is_successful, reason = await ica_runner.check(app_ctx, app_name)
 
             if is_successful:
@@ -95,9 +96,10 @@ async def start(click_ctx, app_name, retry: int, retry_delay: int) -> None:
 async def list_apps(click_ctx):
     app_ctx = click_ctx.obj['app_ctx']
     in_headless = not click_ctx.obj['is_debug']
-    username = config.get_config('username')
-    password = config.get_config('password')
-    async with citrix_login(app_ctx, username, password, headless=in_headless) as page_app:
+    username = config.get_config('USERNAME')
+    password = config.get_config('PASSWORD')
+    url = config.get_config('CITRIX_URL')
+    async with citrix_login(app_ctx, url, username, password, headless=in_headless) as page_app:
         app_map = await load_apps(app_ctx, page_app)
         return list(app_map.keys())
 

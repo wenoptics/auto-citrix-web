@@ -26,7 +26,7 @@ def _javascript_create_notice(txt: str):
 
 
 @contextlib.asynccontextmanager
-async def citrix_login(ctx: Context, username: str, password: str, headless=False):
+async def citrix_login(ctx: Context, citrix_login_url: str, username: str, password: str, headless=False):
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=headless)
         context = await browser.new_context()
@@ -34,8 +34,8 @@ async def citrix_login(ctx: Context, username: str, password: str, headless=Fals
         # Open new page
         page = await context.new_page()
 
-        # Go to https://ctxstore.ansys.com/vpn/index.html
-        await page.goto("https://ctxstore.ansys.com/vpn/index.html")
+        logger.debug('Navigating to {}'.format(citrix_login_url))
+        await page.goto(citrix_login_url)
         logger.debug('Page loaded.')
 
         await page.fill('input[id="Enter user name"]', username)

@@ -14,11 +14,10 @@ from pywinauto import Desktop
 from context import Context
 
 logger = logging.getLogger(__name__)
-BIN_RUNNER = r"C:\Program Files (x86)\Citrix\ICA Client\wfcrun32.exe"
 
 
-def run_ica(ica_file: Union[Path, str], runner=BIN_RUNNER):
-    logger.debug('Using runner from: {}'.format(BIN_RUNNER))
+def run_ica(ica_file: Union[Path, str], runner):
+    logger.debug('Runner path: {}'.format(runner))
 
     ica_file = Path(ica_file)
     with tempfile.TemporaryDirectory() as tempdir:
