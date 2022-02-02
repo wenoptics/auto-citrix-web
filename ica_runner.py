@@ -23,16 +23,18 @@ def run_ica(ica_file: Union[Path, str], runner):
     with tempfile.TemporaryDirectory() as tempdir:
         tmp_ica = Path(tempdir) / 'temp.ica'
         shutil.copy(ica_file, tmp_ica)
-        ret = subprocess.call([str(runner), str(tmp_ica)])
+        # The return code seems always to be 0
+        _ = subprocess.call([str(runner), str(tmp_ica)])
 
 
 async def _check_rdm(ctx: Context, timeout=120) -> Tuple[bool, str]:
 
-    with ctx.console.status("[bold orange]Looking for matching rules...", spinner='dots'):
+    with ctx.console.status("Looking for matching rules...", spinner='dots'):
         _start = time.time()
         while time.time() - _start < timeout:
             w = Desktop(backend="uia").window(title='Citrix Workspace App')
             try:
+                # #32770
                 logger.debug(f'Found title="{w.window_text()}" (className="{w.class_name()}")')
                 if 'did not launch successfully' in ''.join(w.static.texts()):
                     # Try to close the dialog
