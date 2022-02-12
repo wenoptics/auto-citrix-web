@@ -24,25 +24,39 @@ def run_ica(ica_file: Union[Path, str], runner):
         tmp_ica = Path(tempdir) / 'temp.ica'
         shutil.copy(ica_file, tmp_ica)
         # The return code seems always to be 0
-        _ = subprocess.call([str(runner), str(tmp_ica)])
+        try:
+            _ = subprocess.call([str(runner), str(tmp_ica)], timeout=5)
+        except subprocess.TimeoutExpired:
+            # Sometimes, by double-clicking the .lnk to launch makes the process stuck forever. Not sure why.
+            logger.warning('Timeout while waiting for runner process has not exited. But assume nothing.')
 
 
 async def _check_rdm(ctx: Context, timeout=120) -> Tuple[bool, str]:
+    """Check if there's any positive or negative rules matching"""
 
-    with ctx.console.status("Looking for matching rules...", spinner='dots'):
+    with ctx.console.status("Looking for matching rules...", spinner='line'):
         _start = time.time()
         while time.time() - _start < timeout:
-            w = Desktop(backend="uia").window(title='Citrix Workspace App')
-            try:
-                # #32770
-                logger.debug(f'Found title="{w.window_text()}" (className="{w.class_name()}")')
-                if 'did not launch successfully' in ''.join(w.static.texts()):
-                    # Try to close the dialog
-                    w.CloseButton.click()
-                    return False, 'Failed due to detecting the error dialog'
-            except pywinauto.findwindows.ElementNotFoundError:
-                # Not found the error dialog
-                pass
+            has_failure = False
+            for w in Desktop(backend="uia").windows(class_name='#32770', top_level_only=True):
+                # "#32770" is either the opening dialog, or the dialog that reports connection error.
+                try:
+                    _text = ''.join(w.children_texts())
+                    logger.debug(f'Found title="{w.window_text()}"'
+                                 f' className="{w.class_name()}" '
+                                 f' allText="{_text[:30]}"')
+                    if 'did not launch successfully' in _text or 'resource is not available' in _text:
+                        # Try to close the dialog
+                        for c in w.children():
+                            if c.class_name == 'Button' and c.texts() == ['Close']:
+                                c.click()
+                                break
+                        has_failure = True
+                except pywinauto.findwindows.ElementNotFoundError:
+                    # Not found the error dialog
+                    pass
+            if has_failure:
+                return False, 'Failed due to detecting the error dialog(s)'
 
             w = Desktop(backend="uia").window(
                 title_re=r'^Remote Desktop Manager.*',
