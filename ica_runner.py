@@ -47,8 +47,8 @@ async def _check_rdm(ctx: Context, timeout=120) -> Tuple[bool, str]:
                                  f' allText="{_text[:30]}"')
                     if 'did not launch successfully' in _text or 'resource is not available' in _text:
                         # Try to close the dialog
-                        for c in w.children():
-                            if c.class_name == 'Button' and c.texts() == ['Close']:
+                        for c in filter(lambda i: 'button' in str(i.class_name()).lower(), w.children()):
+                            if c.class_name and c.texts() == ['Close']:
                                 c.click()
                                 break
                         has_failure = True
